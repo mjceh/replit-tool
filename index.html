@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Facebook Auto-Post</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <meta name="theme-color" content="#0066FF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <span id="themeIcon">🌙</span>
+    </button>
+
+    <!-- Pull to Refresh Container -->
+    <div class="pull-to-refresh" id="pullToRefresh">
+        <div class="pull-indicator" id="pullIndicator">
+            <span class="spinner"></span>
+            <span>Pull to refresh...</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>📱 Facebook Auto-Post</h1>
+            <div class="instructions">
+                <p><strong>✨ Enhanced Mobile Experience</strong></p>
+                <p>Write your post, select groups, and post automatically with our improved interface.</p>
+            </div>
+        </header>
+        <div class="status-bar" id="statusBar">
+            <span id="statusText">🔄 Loading your groups...</span>
+            <div class="spinner" id="statusSpinner"></div>
+        </div>
+        <div class="main-content">
+            <div class="composer-section">
+                <h2>Create Post</h2>
+                <div class="form-group">
+                    <label for="postContent">Post Content:</label>
+                    <textarea id="postContent" placeholder="Write your post here..." rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="imageUpload">Add Image (Optional):</label>
+                    <div class="image-upload-container" id="imageUploadContainer">
+                        <div class="upload-text">
+                            📸 Drag & drop an image here or click to browse
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*">
+                    </div>
+                    <img id="imagePreview" class="image-preview" alt="Image preview">
+                </div>
+                <div class="form-group">
+                    <label>Selected: <span id="selectedCount">0</span> groups</label>
+                    <div class="selection-info" id="selectionInfo">Select groups to post</div>
+                </div>
+            </div>
+            <div class="groups-section">
+                <h2>Your Groups</h2>
+                <div class="groups-controls">
+                    <div class="control-group">
+                        <label for="searchInput">Search:</label>
+                        <input type="text" id="searchInput" placeholder="Search groups..." disabled>
+                    </div>
+                    <div class="control-group">
+                        <label for="sortSelect">Sort:</label>
+                        <select id="sortSelect" disabled>
+                            <option value="name">Name A-Z</option>
+                            <option value="nameDesc">Name Z-A</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="groups-list" id="groupsContainer">
+                    <div class="empty-state">Loading groups...</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button id="selectAllButton" class="secondary" disabled>Select All</button>
+                    <button id="deselectAllButton" class="secondary" disabled>Deselect All</button>
+                </div>
+            </div>
+            <div class="groupsets-section">
+                <h3>💾 Saved Groupsets</h3>
+                <div class="groupset-form">
+                    <input type="text" id="groupsetName" placeholder="Save as..." disabled>
+                    <button id="saveGroupsetButton" class="secondary" disabled>Save</button>
+                </div>
+                <div class="groupset-list" id="groupsetList">
+                    <div class="empty-state">No saved groupsets</div>
+                </div>
+            </div>
+            <div class="action-buttons">
+                <button id="postToGroupsButton" class="success" disabled>Post Now</button>
+                <div class="posting-controls" id="postingControls" style="display: none;">
+                    <button id="stopPostingButton" class="error">Stop All</button>
+                    <button id="skipCurrentButton" class="warning">Skip Current</button>
+                </div>
+            </div>
+        </div>
+        <div class="output-section">
+            <div class="results-header">
+                <h2>Posting Results</h2>
+                <div class="results-summary">
+                    <div class="summary-item summary-processing">
+                        <span>Processing:</span>
+                        <span class="summary-count" id="processingCount">0</span>
+                    </div>
+                    <div class="summary-item summary-success">
+                        <span>Success:</span>
+                        <span class="summary-count" id="successCount">0</span>
+                    </div>
+                    <div class="summary-item summary-error">
+                        <span>Failed:</span>
+                        <span class="summary-count" id="failedCount">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="posting-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-status">
+                    <span id="progressText">0/0 completed</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+            </div>
+            <div id="postResults">
+                <div class="empty-state" id="resultsMessage">Ready to post</div>
+            </div>
+        </div>
+        <footer style="text-align: center; margin-top: 40px; padding: 20px; color: var(--text-secondary);">
+            <p>Facebook Auto-Post Tool 📱 | Enhanced Mobile Experience ✨</p>
+        </footer>
+    </div>
+
+    <!-- Modern Modal for Confirmations -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Confirm Action</h3>
+                <button class="modal-close" id="modalClose" aria-label="Close modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage">Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="secondary" id="modalCancel">Cancel</button>
+                <button type="button" class="success" id="modalConfirm">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span id="toastMessage"></span>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
