@@ -1,5 +1,5 @@
 # fb_proxy_binary.py
-from flask import Flask, request, Response, jsonify, stream_with_context, send_file, send_from_directory
+from flask import Flask, request, Response, jsonify, stream_with_context, send_file, send_from_directory, session
 import requests
 import logging
 import time
@@ -42,11 +42,25 @@ if args.proxy:
         REQUESTS_VERIFY = False
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key-change-this-in-production'
 
-# --- CONFIGURATION ---
-YOUR_FB_DTSG = "NAfuf1C09XaVOYiGJ1E8vo3e-XY4TQYqjrt-K7vOqjB6NRVbHvyMqdA:46:1756908348"
-YOUR_COOKIE_HEADER = "dbln=%7B%22100003109138802%22%3A%22tInGdwXU%22%7D; datr=maTwZo32ZXI6MDe4BM6Aqa7Z; sb=maTwZrCNL1EkI0of-5GExYVe; ps_l=1; ps_n=1; wd=960x958; locale=ar_AR; c_user=100003109138802; xs=46%3A-x7vOlyzLUKRvg%3A2%3A1756908348%3A-1%3A-1; fr=06s5MbiG2eT0CCdrN.AWd4TBbNL4QRvsZsTRdHo1fNkh5JPvH-MIY_PenqGo1WmdKKDuk.BofSe7..AAA.0.0.BouEs_.AWe38Or3gYyvUujG4SYRF1fghuE"
-YOUR_AV_VALUE = "100003109138802"
+# --- DEFAULT CONFIGURATION (fallback if user not logged in) ---
+DEFAULT_FB_DTSG = "NAfuf1C09XaVOYiGJ1E8vo3e-XY4TQYqjrt-K7vOqjB6NRVbHvyMqdA:46:1756908348"
+DEFAULT_COOKIE_HEADER = "dbln=%7B%22100003109138802%22%3A%22tInGdwXU%22%7D; datr=maTwZo32ZXI6MDe4BM6Aqa7Z; sb=maTwZrCNL1EkI0of-5GExYVe; ps_l=1; ps_n=1; wd=960x958; locale=ar_AR; c_user=100003109138802; xs=46%3A-x7vOlyzLUKRvg%3A2%3A1756908348%3A-1%3A-1; fr=06s5MbiG2eT0CCdrN.AWd4TBbNL4QRvsZsTRdHo1fNkh5JPvH-MIY_PenqGo1WmdKKDuk.BofSe7..AAA.0.0.BouEs_.AWe38Or3gYyvUujG4SYRF1fghuE"
+DEFAULT_AV_VALUE = "100003109138802"
+
+# Helper functions for getting user credentials
+def get_user_fb_dtsg():
+    return session.get('fb_dtsg', DEFAULT_FB_DTSG)
+
+def get_user_cookie_header():
+    return session.get('cookie_header', DEFAULT_COOKIE_HEADER)
+
+def get_user_av_value():
+    return session.get('av_value', DEFAULT_AV_VALUE)
+
+def get_user_name():
+    return session.get('user_name', 'Demo User')
 GRAPHQL_URL = "https://www.facebook.com/api/graphql/?fewfeed_urlencoded"
 UPLOAD_URL = "https://upload.facebook.com/ajax/react_composer/attachments/photo/upload?__a=1"
 # --- END CONFIGURATION ---
@@ -55,8 +69,8 @@ UPLOAD_URL = "https://upload.facebook.com/ajax/react_composer/attachments/photo/
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# RESTORED HEADERS - CRITICAL FOR FACEBOOK
-HEADERS = {
+# RESTORED HEADERS - CRITICAL FOR FACEBOOK (base headers without cookie)
+BASE_HEADERS = {
     'Host': 'www.facebook.com',
     'User-Agent':
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -72,9 +86,14 @@ HEADERS = {
     '"Google Chrome";v="129", "Not=A?Brand";v="8", "Chromium";v="129"',
     'Sec-Ch-Ua-Mobile': '?0',
     'Sec-Ch-Ua-Platform': '"Linux"',
-    'Priority': 'u=1, i',
-    'Cookie': YOUR_COOKIE_HEADER
+    'Priority': 'u=1, i'
 }
+
+def get_headers():
+    """Get headers with current user's cookie"""
+    headers = BASE_HEADERS.copy()
+    headers['Cookie'] = get_user_cookie_header()
+    return headers
 
 # Thread-safe storage for progress
 progress_store = {}
@@ -146,14 +165,14 @@ def fetch_groups():
         logger.info("Received request to /fetch_groups")
 
         payload = (
-            f"fb_dtsg={YOUR_FB_DTSG}&av={YOUR_AV_VALUE}"
+            f"fb_dtsg={get_user_fb_dtsg()}&av={get_user_av_value()}"
             "&__dyn=2D_qZPljzChGR8qV8RaJR_nWehb_L96SR_fk4kwWHkSnWjrl10PqoO4YFNURoo4bQF_6Z48zvu34WP3F5S6qAToBcTo_qKamx_bpYvyaaN9YBe9104ToQnFryUFuNTceTPVCdG74Q5NaaHtGYwuWW6ndHRArYaNn9zO4RUd5WC_xwtiohuT-QU3yYk7ttd_sZycXUJkVPd8_Agz5fvYrxkH15nAew-Yy5rSP9ZmjPN4"
             "&variables=%7B%22adminGroupsCount%22%3A90%2C%22memberGroupsCount%22%3A5000%2C%22scale%22%3A1.5%2C%22count%22%3A10%2C%22cursor%22%3Anull%7D"
             "&doc_id=3884641628300421")
 
         logger.info(f"Making POST request to {GRAPHQL_URL}")
         response = requests.post(GRAPHQL_URL,
-                                 headers=HEADERS,
+                                 headers=get_headers(),
                                  data=payload.encode('utf-8'),
                                  proxies=REQUESTS_PROXIES,
                                  verify=REQUESTS_VERIFY)
@@ -461,6 +480,144 @@ def skip_current(request_id):
     return jsonify({"status": "skip_requested"})
 
 
+@app.route('/facebook_auth', methods=['GET'])
+def facebook_auth():
+    """Provide Facebook login URL for authentication"""
+    # This will be loaded in the iframe
+    facebook_login_url = "https://www.facebook.com/login.php?next=https%3A%2F%2Fwww.facebook.com%2F"
+    return f"""
+    <html>
+    <head>
+        <script>
+        // Monitor for successful Facebook login
+        function checkForFacebookLogin() {{
+            try {{
+                // Check if we're on Facebook and logged in
+                if (window.location.hostname === 'www.facebook.com' && document.cookie.includes('c_user=')) {{
+                    // Extract authentication data
+                    const cookies = document.cookie;
+                    const dtsgMatch = document.documentElement.innerHTML.match(/"dtsg":{{"token":"([^"]+)"/);
+                    const userIdMatch = cookies.match(/c_user=([^;]+)/);
+                    const userNameElement = document.querySelector('[data-testid="blue_bar_profile_link"] span, [aria-label*="profile"], .headerTinymanName');
+                    
+                    if (dtsgMatch && userIdMatch) {{
+                        const authData = {{
+                            fb_dtsg: dtsgMatch[1],
+                            cookie_header: cookies,
+                            av_value: userIdMatch[1],
+                            user_name: userNameElement ? userNameElement.textContent.trim() : 'Facebook User'
+                        }};
+                        
+                        // Send auth data to parent window
+                        window.parent.postMessage({{
+                            type: 'facebook_auth_success',
+                            data: authData
+                        }}, '*');
+                    }}
+                }}
+            }} catch (e) {{
+                console.error('Error checking Facebook login:', e);
+            }}
+        }}
+        
+        // Check periodically and on page changes
+        setInterval(checkForFacebookLogin, 2000);
+        window.addEventListener('load', checkForFacebookLogin);
+        
+        // Redirect to Facebook login
+        if (window.location.href !== '{facebook_login_url}') {{
+            window.location.href = '{facebook_login_url}';
+        }}
+        </script>
+    </head>
+    <body>
+        <p style="text-align: center; padding: 20px; font-family: Arial, sans-serif;">
+            Redirecting to Facebook login...
+        </p>
+    </body>
+    </html>
+    """
+
+
+@app.route('/save_auth', methods=['POST'])
+def save_auth():
+    """Save Facebook authentication data to session"""
+    try:
+        data = request.get_json()
+        
+        if not data or not all(key in data for key in ['fb_dtsg', 'cookie_header', 'av_value']):
+            return jsonify({"error": "Missing authentication data"}), 400
+            
+        # Save to session
+        session['fb_dtsg'] = data['fb_dtsg']
+        session['cookie_header'] = data['cookie_header']
+        session['av_value'] = data['av_value']
+        session['user_name'] = data.get('user_name', 'Facebook User')
+        session['authenticated'] = True
+        
+        logger.info(f"Successfully saved authentication for user: {session['user_name']}")
+        return jsonify({
+            "status": "success",
+            "user_name": session['user_name']
+        })
+        
+    except Exception as e:
+        logger.error(f"Error saving authentication: {str(e)}")
+        return jsonify({"error": "Failed to save authentication"}), 500
+
+
+@app.route('/auth_status', methods=['GET'])
+def auth_status():
+    """Get current authentication status"""
+    is_authenticated = session.get('authenticated', False)
+    return jsonify({
+        "authenticated": is_authenticated,
+        "user_name": session.get('user_name', '') if is_authenticated else ''
+    })
+
+
+@app.route('/connect_facebook', methods=['POST'])
+def connect_facebook():
+    """Connect user with manual Facebook credentials"""
+    try:
+        data = request.get_json()
+        
+        if not data or not all(key in data for key in ['cookies', 'dtsg_token', 'user_id']):
+            return jsonify({
+                'success': False,
+                'message': 'Missing required credentials'
+            }), 400
+        
+        # Store credentials in session
+        session['cookie_header'] = data['cookies']
+        session['dtsg_token'] = data['dtsg_token']
+        session['user_id'] = data['user_id']
+        session['user_name'] = 'Facebook User'  # We could try to extract real name from cookies if needed
+        session['authenticated'] = True
+        
+        logger.info("User connected with manual credentials")
+        
+        return jsonify({
+            'success': True,
+            'user_name': session['user_name'],
+            'message': 'Successfully connected to Facebook'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error connecting to Facebook: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Connection failed: {str(e)}'
+        }), 500
+
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    """Logout user and clear session"""
+    session.clear()
+    return jsonify({"status": "logged_out"})
+
+
 def extract_post_url(response_text):
     """Extract post URL from Facebook response"""
     try:
@@ -551,7 +708,7 @@ def upload_photo(photo_data, request_id=None):
         payload.append(f"--{boundary}\r\n".encode('latin-1'))
         payload.append(
             b"Content-Disposition: form-data; name=\"fb_dtsg\"\r\n\r\n")
-        payload.append(f"{YOUR_FB_DTSG}\r\n".encode('latin-1'))
+        payload.append(f"{get_user_fb_dtsg()}\r\n".encode('latin-1'))
 
         payload.append(f"--{boundary}\r\n".encode('latin-1'))
         payload.append(
@@ -571,7 +728,7 @@ def upload_photo(photo_data, request_id=None):
 
         body = b"".join(payload)
 
-        upload_headers = HEADERS.copy()
+        upload_headers = get_headers()
         upload_headers['Host'] = 'upload.facebook.com'
         upload_headers[
             'Content-Type'] = f'multipart/form-data; boundary={boundary}'
@@ -656,7 +813,7 @@ def create_post(group_id, content, photo_id=None, request_id=None):
                 "audience": {
                     "to_id": group_id
                 },
-                "actor_id": YOUR_AV_VALUE,
+                "actor_id": get_user_av_value(),
                 "client_mutation_id": str(int(time.time()))
             }
         }
@@ -675,7 +832,7 @@ def create_post(group_id, content, photo_id=None, request_id=None):
         payload.append(f"--{boundary}")
         payload.append("Content-Disposition: form-data; name=\"fb_dtsg\"")
         payload.append("")
-        payload.append(YOUR_FB_DTSG)
+        payload.append(get_user_fb_dtsg())
 
         payload.append(f"--{boundary}")
         payload.append("Content-Disposition: form-data; name=\"variables\"")
@@ -691,7 +848,7 @@ def create_post(group_id, content, photo_id=None, request_id=None):
 
         body = "\r\n".join(payload)
 
-        post_headers = HEADERS.copy()
+        post_headers = get_headers()
         post_headers['Host'] = 'www.facebook.com'
         post_headers[
             'Content-Type'] = f'multipart/form-data; boundary={boundary}'

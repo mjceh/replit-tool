@@ -1247,3 +1247,504 @@ select:focus-visible {
     --card-bg: #000000;
   }
 }
+
+/* ===============================
+   FACEBOOK AUTHENTICATION STYLES
+   =============================== */
+
+.auth-section {
+    margin: 24px 0;
+    padding: 0 20px;
+}
+
+.auth-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 4px 16px var(--shadow);
+    border: 1px solid var(--border);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.auth-header h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 8px 0;
+}
+
+.auth-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
+
+.facebook-login-btn {
+    background: #1877F2;
+    color: white;
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 16px 32px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0 auto;
+    min-width: 240px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(24, 119, 242, 0.2);
+}
+
+.facebook-login-btn:hover {
+    background: #166FE5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(24, 119, 242, 0.3);
+}
+
+.facebook-login-btn:active {
+    transform: translateY(0);
+}
+
+.fb-icon {
+    font-size: 20px;
+}
+
+.auth-status {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.auth-status .spinner {
+    width: 16px;
+    height: 16px;
+}
+
+.account-info {
+    margin: 24px 0;
+    padding: 0 20px;
+}
+
+.account-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px var(--shadow);
+    border: 1px solid var(--success);
+    border-left: 4px solid var(--success);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.account-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.account-name {
+    font-weight: 600;
+    color: var(--text);
+    font-size: 16px;
+}
+
+.account-status {
+    font-size: 14px;
+    color: var(--success);
+    font-weight: 500;
+}
+
+.logout-btn {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.logout-btn:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+/* Facebook Login Popup */
+.facebook-login-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--backdrop);
+    z-index: 15000;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.facebook-login-popup.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.login-popup-content {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px var(--shadow-large);
+    overflow: hidden;
+}
+
+.login-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.login-popup-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0;
+}
+
+.popup-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.popup-close:hover {
+    background: var(--border-light);
+    color: var(--text);
+}
+
+.login-popup-body {
+    flex: 1;
+    padding: 0;
+    min-height: 400px;
+    display: flex;
+}
+
+.login-popup-body iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    flex: 1;
+}
+
+.login-popup-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    background: var(--surface-2);
+}
+
+.login-popup-footer p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Authentication Instructions */
+.auth-instructions {
+  margin-bottom: 24px;
+}
+
+.instruction-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-light);
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.step-content h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.step-content p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.step-content a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.step-content a:hover {
+  text-decoration: underline;
+}
+
+.instructions-btn {
+  background: var(--gradient-accent);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.instructions-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+/* Credential Form */
+.credential-form {
+  margin-bottom: 24px;
+}
+
+.credential-form .form-group {
+  margin-bottom: 20px;
+}
+
+.credential-form label {
+  display: block;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.credential-form textarea,
+.credential-form input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.2s ease;
+  resize: vertical;
+}
+
+.credential-form textarea:focus,
+.credential-form input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+.credential-form textarea {
+  min-height: 80px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+}
+
+/* Instructions Modal */
+.instructions-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--backdrop);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+  padding: 20px;
+}
+
+.instructions-modal .modal-content {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-large);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: scaleIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+.instructions-modal .modal-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-2);
+}
+
+.instructions-modal .modal-header h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.instructions-modal .modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.instructions-modal .modal-close:hover {
+  background: var(--border-light);
+  color: var(--text);
+}
+
+.instructions-modal .modal-body {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.instruction-detail {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.instruction-detail:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.instruction-detail h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.instruction-detail p {
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.instruction-detail code {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--primary);
+}
+
+.instruction-note {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.instruction-note strong {
+  color: var(--warning);
+}
+
+/* Mobile Optimizations */
+@media (max-width: 480px) {
+    .auth-card, .account-card {
+        margin: 0 16px;
+    }
+    
+    .facebook-login-btn {
+        min-width: 200px;
+        padding: 14px 24px;
+    }
+    
+    .login-popup-content {
+        max-width: 95%;
+        max-height: 85vh;
+    }
+    
+    .account-card {
+        padding: 16px 20px;
+    }
+    
+    .instructions-modal .modal-content {
+        margin: 20px;
+        max-height: calc(100vh - 40px);
+    }
+    
+    .instructions-modal .modal-header,
+    .instructions-modal .modal-body {
+        padding: 20px;
+    }
+    
+    .instruction-step {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .step-number {
+        align-self: flex-start;
+    }
+}

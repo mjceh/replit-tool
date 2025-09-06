@@ -42,6 +42,21 @@ const postingControls = document.getElementById('postingControls');
 const stopPostingButton = document.getElementById('stopPostingButton');
 const skipCurrentButton = document.getElementById('skipCurrentButton');
 
+// Authentication Elements
+const authSection = document.getElementById('authSection');
+const accountInfo = document.getElementById('accountInfo');
+const showInstructionsButton = document.getElementById('showInstructionsButton');
+const instructionsModal = document.getElementById('instructionsModal');
+const instructionsModalClose = document.getElementById('instructionsModalClose');
+const connectButton = document.getElementById('connectButton');
+const cookieInput = document.getElementById('cookieInput');
+const dtsgtokenInput = document.getElementById('dtsgtokenInput');
+const useridInput = document.getElementById('useridInput');
+const accountName = document.getElementById('accountName');
+const logoutButton = document.getElementById('logoutButton');
+const authSpinner = document.getElementById('authSpinner');
+const authStatusText = document.getElementById('authStatusText');
+
 // Global state
 let allGroups = [];
 let selectedGroups = new Set();
@@ -53,6 +68,8 @@ let postResultsData = {};
 let groupIdToNameMap = {};
 let currentTheme = localStorage.getItem('theme') || 'light';
 let modalResolve = null;
+let isAuthenticated = false;
+let userName = '';
 let pullStartY = 0;
 let isPulling = false;
 let isPosting = false;
@@ -1003,3 +1020,247 @@ function createPostResultElement(groupId, result) {
     `;
     postResults.appendChild(resultElement);
 }
+
+// ===============================
+// FACEBOOK AUTHENTICATION SYSTEM
+// ===============================
+
+// Check authentication status on page load
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/auth_status');
+        const data = await response.json();
+        
+        isAuthenticated = data.authenticated;
+        userName = data.user_name;
+        
+        updateAuthUI();
+        
+        if (isAuthenticated) {
+            // Auto-load groups if authenticated
+            await fetchGroups();
+        } else {
+            // Show login interface
+            hideMainContent();
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        showToast('Error checking authentication status', 'error');
+        hideMainContent();
+    }
+}
+
+// Update authentication UI based on current state
+function updateAuthUI() {
+    if (isAuthenticated) {
+        authSection.style.display = 'none';
+        accountInfo.style.display = 'block';
+        accountName.textContent = userName;
+        showMainContent();
+        statusText.textContent = 'Ready to post!';
+        statusSpinner.style.display = 'none';
+    } else {
+        authSection.style.display = 'block';
+        accountInfo.style.display = 'none';
+        hideMainContent();
+        statusText.textContent = 'Please connect your Facebook account first';
+        statusSpinner.style.display = 'none';
+    }
+}
+
+// Hide main content when not authenticated
+function hideMainContent() {
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '0.5';
+        mainContent.style.pointerEvents = 'none';
+    }
+}
+
+// Show main content when authenticated
+function showMainContent() {
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+        mainContent.style.pointerEvents = 'auto';
+    }
+}
+
+// Handle Facebook login button click
+function handleFacebookLogin() {
+    authSpinner.style.display = 'inline-block';
+    authStatusText.textContent = 'Opening Facebook login...';
+    
+    // Show login popup
+    loginPopup.classList.add('show');
+    loginFrame.src = '/facebook_auth';
+    
+    // Listen for authentication success
+    const messageHandler = (event) => {
+        if (event.data && event.data.type === 'facebook_auth_success') {
+            handleAuthSuccess(event.data.data);
+            window.removeEventListener('message', messageHandler);
+        }
+    };
+    
+    window.addEventListener('message', messageHandler);
+}
+
+// Handle successful Facebook authentication
+async function handleAuthSuccess(authData) {
+    try {
+        authStatusText.textContent = 'Saving authentication...';
+        
+        const response = await fetch('/save_auth', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(authData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            isAuthenticated = true;
+            userName = result.user_name;
+            
+            // Hide popup and update UI
+            loginPopup.classList.remove('show');
+            updateAuthUI();
+            
+            showToast(`Welcome, ${userName}! 🎉`, 'success');
+            
+            // Load groups for the authenticated user
+            await fetchGroups();
+        } else {
+            throw new Error(result.error || 'Failed to save authentication');
+        }
+    } catch (error) {
+        console.error('Error saving authentication:', error);
+        showToast('Failed to save authentication', 'error');
+        authStatusText.textContent = 'Authentication failed';
+    } finally {
+        authSpinner.style.display = 'none';
+    }
+}
+
+// Handle logout
+async function handleLogout() {
+    try {
+        const confirmed = await showModal(
+            'Confirm Logout',
+            'Are you sure you want to logout? You will need to login again to use the app.',
+            true
+        );
+        
+        if (confirmed) {
+            const response = await fetch('/logout', {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                isAuthenticated = false;
+                userName = '';
+                allGroups = [];
+                selectedGroups.clear();
+                
+                // Clear UI
+                groupsContainer.innerHTML = '<div class="empty-state">Please login to see your groups</div>';
+                updateAuthUI();
+                updateSelectedGroupsUI();
+                
+                showToast('Successfully logged out', 'success');
+            }
+        }
+    } catch (error) {
+        console.error('Error during logout:', error);
+        showToast('Error during logout', 'error');
+    }
+}
+
+// Close login popup
+// Authentication Functions
+function showInstructionsModal() {
+    instructionsModal.style.display = 'flex';
+}
+
+function hideInstructionsModal() {
+    instructionsModal.style.display = 'none';
+}
+
+async function handleManualConnect() {
+    const cookies = cookieInput.value.trim();
+    const dtsgToken = dtsgtokenInput.value.trim();
+    const userId = useridInput.value.trim();
+    
+    if (!cookies || !dtsgToken || !userId) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    // Show loading state
+    authSpinner.style.display = 'inline-block';
+    authStatusText.textContent = 'Connecting to Facebook...';
+    connectButton.disabled = true;
+    
+    try {
+        // Send credentials to backend
+        const response = await fetch('/connect_facebook', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cookies: cookies,
+                dtsg_token: dtsgToken,
+                user_id: userId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            isAuthenticated = true;
+            userName = data.user_name || 'Facebook User';
+            
+            // Clear form
+            cookieInput.value = '';
+            dtsgtokenInput.value = '';
+            useridInput.value = '';
+            
+            updateAuthUI();
+            showToast('Successfully connected to Facebook!', 'success');
+            
+            // Fetch groups with new credentials
+            await fetchGroups();
+        } else {
+            throw new Error(data.message || 'Failed to connect');
+        }
+    } catch (error) {
+        console.error('Connection error:', error);
+        showToast('Failed to connect: ' + error.message, 'error');
+        authStatusText.textContent = 'Connection failed';
+    } finally {
+        authSpinner.style.display = 'none';
+        connectButton.disabled = false;
+    }
+}
+
+// Event Listeners for Authentication
+showInstructionsButton.addEventListener('click', showInstructionsModal);
+instructionsModalClose.addEventListener('click', hideInstructionsModal);
+connectButton.addEventListener('click', handleManualConnect);
+logoutButton.addEventListener('click', handleLogout);
+
+// Close modal when clicking outside
+instructionsModal.addEventListener('click', (e) => {
+    if (e.target === instructionsModal) {
+        hideInstructionsModal();
+    }
+});
+
+// Initialize authentication check when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthStatus();
+});
